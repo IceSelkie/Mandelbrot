@@ -1,3 +1,5 @@
+import val.primativedouble.Value;
+
 import java.awt.*;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -6,6 +8,8 @@ import java.util.List;
 
 import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.opengl.GL11.*;
+import static val.primativedouble.Value.FOUR;
+import static val.primativedouble.Value.val;
 
 public class Mandelbrot
 {
@@ -17,10 +21,18 @@ public class Mandelbrot
   HashMap<HashableView, Color[]> calculated = new HashMap<>(500);
   Display.WindowSize w;
 
-  double scale = -7.5;
+  // Original
+  //double scale = -7.5;
+  //QP center = qp(q(-1, 2), q(0, 1));
+
+  // ??
   //double scale = -20.5;
-  QP center = qp(q(-1, 2), q(0, 1));
   //QP center = qp(q(81448, 49550959), q(-24170803,29388151));
+
+  // Cool spikes
+  double scale = -19.5;
+  QP center = qp(new Q(new BigInteger("-2301783278655076632811585394649140808770420500066574794752"),new BigInteger("15459423034510202420813247184330822928167207450548633600000")),new Q(new BigInteger("-7929977679099751430849043327089856342822712822632586149888"),new BigInteger("7729711517255101210406623592165411464083603725274316800000")));
+
 
   public static void main(String[] args)
   {
@@ -40,7 +52,7 @@ public class Mandelbrot
     clearThreads();
     calculated.clear();
 
-    System.out.printf("%sNow centered on (%s + %s * i)%s", "\n", center.x, center.y, "\n");
+    System.out.printf("%sNow centered on (%s + %s * i) (%s/%s + i * %s/%s)%s", "\n", center.x, center.y, center.x.n, center.x.d, center.y.n, center.y.d,"\n");
   }
 
   public void keyPress(int key, int action)
@@ -151,9 +163,10 @@ public class Mandelbrot
               int yPositionOffset = (y + w.h / 2) * w.w + w.w / 2;
               for (int x = workTile[0]; x <= workTile[2]; x++)
               {
+                Q qx = hv.pt.x.a(scaleFactor.m(x));
                 long steps = -1;
                 try {
-                  steps = countStepsSimple(new Double(hv.pt.x.a(scaleFactor.m(x)).toString()), new Double(qy.toString()), 2048);
+                  steps = countStepsValue(new Value(new Double(qx.toString())), new Value(new Double(qy.toString())), 2048);
                 } catch (Exception e)
                 {
                   System.out.println("{"+hv.pt.x.a(scaleFactor.m(x)).toString()+","+qy.toString()+"}");
@@ -206,6 +219,27 @@ public class Mandelbrot
       zyS = zy * zy;
     }
     if (zxS + zyS < 4)
+      steps++;
+    return steps == maxSteps + 1 ? -1 : steps;
+  }
+  public static long countStepsValue(Value cx, Value cy, long maxSteps)
+  {
+    Value zx = Value.ZERO, zy = Value.ZERO;
+    Value temp;
+
+    Value zxS = zx.mul(zx), zyS = zy.mul(zy);
+
+    long steps = 0;
+    while (steps < maxSteps && zxS .add (zyS) .lessThan (FOUR))
+    {
+      temp = zxS .sub (zyS) .add (cx);
+      zy = (zx .add (zy)).sq() .sub (zxS) .sub (zyS) .add (cy);
+      zx = temp;
+      steps++;
+      zxS = zx.mul(zx);
+      zyS = zy.mul(zy);
+    }
+    if (zxS .add (zyS) .lessThan (FOUR))
       steps++;
     return steps == maxSteps + 1 ? -1 : steps;
   }

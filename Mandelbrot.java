@@ -14,11 +14,11 @@ import static val.primativedouble.Value.val;
 public class Mandelbrot
 {
   public static int COLORRATE = 5;
-  public static final int TILESIZE = 150;
-  public static final int DEPTH = 4*2048;
-  public static final int ANTIALIASING = 1;
+  public static final int TILESIZE = 25; // 150
+  public static final int DEPTH = 4*2048; // 2048
+  public static final int ANTIALIASING = 16; // 1
   public static final int MAXTHREADS = 4*8+1;
-  public static final String PRECISION = "10000000000000";
+  public static final String PRECISION = "10000000000000000";
   private volatile Integer threadCount = 0; private synchronized int getThreads(){ return threadCount;} private synchronized void addThread(){ if (threadCount >=MAXTHREADS) System.err.println("Attempting to create a thread exceeding thread limit!"); threadCount++;} private synchronized void remThread(){ threadCount--;} private synchronized boolean canStartNewThread(){return threadCount<MAXTHREADS;}
   private volatile List<Thread> threads = Collections.synchronizedList(new ArrayList<Thread>(MAXTHREADS));
   HashMap<HashableView, Color[]> calculated = new HashMap<>(500);
@@ -37,8 +37,16 @@ public class Mandelbrot
   //QP center = qp(new Q(new BigInteger("-2301783278655076632811585394649140808770420500066574794752"),new BigInteger("15459423034510202420813247184330822928167207450548633600000")),new Q(new BigInteger("-7929977679099751430849043327089856342822712822632586149888"),new BigInteger("7729711517255101210406623592165411464083603725274316800000")));
 
   // 01 Arcing Zoom
-  double scale = -29.0;
-  QP center = qp(new Q(new BigInteger("-85241514145487948761243"), new BigInteger("572479338973652582400000")), new Q(new BigInteger("-7047730329760827785407283"), new BigInteger("6869752067683830988800000")));
+  //double scale = -29.0;
+  //QP center = qp(new Q(new BigInteger("-85241514145487948761243"), new BigInteger("572479338973652582400000")), new Q(new BigInteger("-7047730329760827785407283"), new BigInteger("6869752067683830988800000")));
+
+  //Now centered on (-0.1488988479183 + -1.0259075228194 * i) (-824405337713456342058634333124188673418821894144/5536680432649312569992785998100296189031219200000 + i * -68161465287625812021748692727096276126856290238464/66440165191791750839913431977203554268374630400000)
+  double scale = -45.0;
+  QP center = qp(new Q(new BigInteger("-824405337713456342058634333124188673418821894144"), new BigInteger("5536680432649312569992785998100296189031219200000")), new Q(new BigInteger("-68161465287625812021748692727096276126856290238464"), new BigInteger("66440165191791750839913431977203554268374630400000")));
+
+  //Now centered on (-0.1488988479182952 + -1.0259075228224855 * i) (-156351065007566805536679717902520180585184297051059600526282234912293357272305181740113695589501876635357821471771652298663040820339068108800000/1050048856612784811624118896102900188226486902730961598736571103158496705677236567292605696792464875546003256803410319985501278977392640000000000 + i * -12927036255962464080151345488248209469761598172246797660221691866872273692602486962073929305996030740650276902171941681540968122573928372633600000/12600586279353417739489426753234802258717842832771539184838853237901960468126838807511268361509578506552039081640923839826015347728711680000000000)
+  //double scale = -55.0;
+  //QP center = qp(new Q(new BigInteger("-156351065007566805536679717902520180585184297051059600526282234912293357272305181740113695589501876635357821471771652298663040820339068108800000"), new BigInteger("1050048856612784811624118896102900188226486902730961598736571103158496705677236567292605696792464875546003256803410319985501278977392640000000000")), new Q(new BigInteger("-12927036255962464080151345488248209469761598172246797660221691866872273692602486962073929305996030740650276902171941681540968122573928372633600000"), new BigInteger("12600586279353417739489426753234802258717842832771539184838853237901960468126838807511268361509578506552039081640923839826015347728711680000000000")));
 
   // ## name
   //double scale = -13.5;
@@ -153,6 +161,7 @@ public class Mandelbrot
     Thread runner = new Thread(()->
     {
       Q scaleFactor = q(2).pow((int) scale).m(trot((int) (scale * 10) % 10));
+      Q scaleFactorSmall = scaleFactor.m(q(1,ANTIALIASING));
       HashSet<int[]> tiles = new HashSet<>();
       for (int y = -w.h/2; y < w.h/2; y+=TILESIZE)
         for (int x = -w.w/2; x < w.w/2; x+=TILESIZE)
@@ -176,11 +185,23 @@ public class Mandelbrot
               {
                 Q qx = hv.pt.x.a(scaleFactor.m(x));
                 long steps = -1;
+                int rate = ANTIALIASING*ANTIALIASING;
                 try {
-                  // Decimal Type
-                  steps = countStepsValue(val(qx.toString()), val(qy.toString()), DEPTH);
-                  // Quotient Type
-                  //steps = countStepsValue(val(qx.n,qx.d), val(qy.n,qy.d), DEPTH);
+                  long[] d = new long[ANTIALIASING*ANTIALIASING];
+                  for (int y2 = 0; y2<ANTIALIASING; y2++)
+                    for (int x2 = 0; x2<ANTIALIASING; x2++)
+                      // Decimal Type
+                      d[y2*ANTIALIASING+x2] = countStepsValue(val(qx.a(scaleFactorSmall.m(x2)).toString()), val(qy.a(scaleFactorSmall.m(y2)).toString()), DEPTH);
+                      // Quotient Type
+                      //d[y2*ANTIALIASING+x2] = countStepsValue(val(qx.n,qx.d), val(qy.n,qy.d), DEPTH);
+
+                  for (int i = 0; i<ANTIALIASING*ANTIALIASING; i++)
+                    if (d[i]!=-1)
+                      steps+=d[i];
+                    else
+                      rate--;
+                    if (rate!=0)
+                      steps = ((COLORRATE*(steps+1)) / rate)%360;
                 } catch (Exception e)
                 {
                   System.out.println("{"+hv.pt.x.a(scaleFactor.m(x)).toString()+","+qy.toString()+"}");
@@ -190,7 +211,7 @@ public class Mandelbrot
                   if (steps == -1)
                     clrset[yPositionOffset + x] = Color.BLACK;
                   else
-                    clrset[yPositionOffset + x] = Display.hsb4ToColor(COLORRATE * (int) (steps % 360), 90, 90, 255);
+                    clrset[yPositionOffset + x] = Display.hsb4ToColor((int)steps, 90, rate*90, 255);
                 }
               }
             }

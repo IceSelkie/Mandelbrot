@@ -6,16 +6,25 @@ public class Value
 {
   BigInteger n, d;
 
-  public static final Value ZERO = val(0,1);
-  public static final Value ONE = val(1,1);
-  public static final Value TWO = val(2,1);
-  public static final Value FOUR = val(4,1);
+  public static final Value ZERO = val(0);
+  public static final Value ONE = val(1);
+  public static final Value TWO = val(2);
+  public static final Value FOUR = val(4);
 
   // create
+  public Value(BigInteger val) { this(val,BigInteger.ONE); }
+  public Value(long val) { this(val,1); }
+  public Value(String val) { this(val,"1"); }
+  public static Value val(BigInteger val) { return new Value(val); }
+  public static Value val(long val) { return new Value(val); }
+  public static Value val(String val) { return new Value(val); }
+
   public Value(BigInteger n, BigInteger d) { this.n = n;this.d = d; }
   public Value(long n, long d) { this.n = new BigInteger(n + "");this.d = new BigInteger(d + ""); }
+  public Value(String n, String d) { this.n = new BigInteger(n);this.d = new BigInteger(d); }
   public static Value val(BigInteger n, BigInteger d) { return new Value(n,d); }
   public static Value val(long n, long d) { return new Value(n,d); }
+  public static Value val(String n, String d) { return new Value(n,d); }
 
 
   // add

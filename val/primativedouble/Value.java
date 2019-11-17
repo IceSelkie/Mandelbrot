@@ -11,7 +11,9 @@ public class Value
 
   // create
   public Value(double val) { this.data = val; }
+  public Value(String val) { this.data = new Double(val); }
   public static Value val(double v) { return new Value(v); }
+  public static Value val(String v) { return new Value(v); }
 
   // add
   public Value add(Value o) { return val(data+o.data); }

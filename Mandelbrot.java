@@ -1,4 +1,4 @@
-import val.primativedouble.Value;
+import val.infiprecision.Value;
 
 import java.awt.*;
 import java.math.BigDecimal;
@@ -8,13 +8,15 @@ import java.util.List;
 
 import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.opengl.GL11.*;
-import static val.primativedouble.Value.FOUR;
-import static val.primativedouble.Value.val;
+import static val.infiprecision.Value.FOUR;
+import static val.infiprecision.Value.val;
 
 public class Mandelbrot
 {
   public static int COLORRATE = 5;
   public static final int TILESIZE = 150;
+  public static final int DEPTH = 2048/2;
+  public static final int ANTIALIASING = 1;
   public static final int MAXTHREADS = 4*8+1;
   private volatile Integer threadCount = 0; private synchronized int getThreads(){ return threadCount;} private synchronized void addThread(){ if (threadCount >=MAXTHREADS) System.err.println("Attempting to create a thread exceeding thread limit!"); threadCount++;} private synchronized void remThread(){ threadCount--;} private synchronized boolean canStartNewThread(){return threadCount<MAXTHREADS;}
   private volatile List<Thread> threads = Collections.synchronizedList(new ArrayList<Thread>(MAXTHREADS));
@@ -29,9 +31,17 @@ public class Mandelbrot
   //double scale = -20.5;
   //QP center = qp(q(81448, 49550959), q(-24170803,29388151));
 
-  // Cool spikes
-  double scale = -19.5;
-  QP center = qp(new Q(new BigInteger("-2301783278655076632811585394649140808770420500066574794752"),new BigInteger("15459423034510202420813247184330822928167207450548633600000")),new Q(new BigInteger("-7929977679099751430849043327089856342822712822632586149888"),new BigInteger("7729711517255101210406623592165411464083603725274316800000")));
+  // 00 Cool spikes
+  //double scale = -19.5;
+  //QP center = qp(new Q(new BigInteger("-2301783278655076632811585394649140808770420500066574794752"),new BigInteger("15459423034510202420813247184330822928167207450548633600000")),new Q(new BigInteger("-7929977679099751430849043327089856342822712822632586149888"),new BigInteger("7729711517255101210406623592165411464083603725274316800000")));
+
+  // 01 Arcing Zoom
+  double scale = -29.0;
+  QP center = qp(new Q(new BigInteger("-85241514145487948761243"), new BigInteger("572479338973652582400000")), new Q(new BigInteger("-7047730329760827785407283"), new BigInteger("6869752067683830988800000")));
+
+  // ## name
+  //double scale = -13.5;
+  //QP center = qp(new Q(new BigInteger(""), new BigInteger("")), new Q(new BigInteger(""), new BigInteger("")));
 
 
   public static void main(String[] args)
@@ -166,7 +176,10 @@ public class Mandelbrot
                 Q qx = hv.pt.x.a(scaleFactor.m(x));
                 long steps = -1;
                 try {
-                  steps = countStepsValue(new Value(new Double(qx.toString())), new Value(new Double(qy.toString())), 2048);
+                  // Decimal Type
+                  steps = countStepsValue(val(qx.toString()), val(qy.toString()), DEPTH);
+                  // Quotient Type
+                  //steps = countStepsValue(val(qx.n,qx.d), val(qy.n,qy.d), DEPTH);
                 } catch (Exception e)
                 {
                   System.out.println("{"+hv.pt.x.a(scaleFactor.m(x)).toString()+","+qy.toString()+"}");

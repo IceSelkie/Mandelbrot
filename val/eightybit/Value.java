@@ -1,8 +1,11 @@
-package val.primativefloat;
+package val.eightybit;
 
 public class Value
 {
-  float data;
+  int exponent;
+  long mantissa_big; // lower half only used
+  long mantissa_small; // lower half only used
+  // Recombine with "(mantissa_big << 32) + mantissa_small"
 
   public static final Value ZERO = val(0);
   public static final Value ONE = val(1);
@@ -10,9 +13,9 @@ public class Value
   public static final Value FOUR = val(4);
 
   // create
-  public Value(float val) { this.data = val; }
-  public Value(String val) { this.data = new Float(val); }
-  public static Value val(float v) { return new Value(v); }
+  public Value(double val) { this.data = val; }
+  public Value(String val) { this.data = new Double(val); }
+  public static Value val(double v) { return new Value(v); }
   public static Value val(String v) { return new Value(v); }
 
   // add
@@ -46,5 +49,5 @@ public class Value
   public Value recip() { return val(1/data); }
 
   // toString
-  @Override public String toString() { return ((Float)data).toString(); }
+  @Override public String toString() { return ((Double)data).toString(); }
 }

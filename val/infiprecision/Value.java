@@ -13,7 +13,9 @@ public class Value
 
   // create
   public Value(BigDecimal val) { this.data = val; }
+  public Value(String val) { this.data = new BigDecimal(val); }
   public static Value val(BigDecimal v) { return new Value(v); }
+  public static Value val(String v) { return new Value(v); }
 
   // add
   public Value add(Value o) { return val(data.add(o.data)); }

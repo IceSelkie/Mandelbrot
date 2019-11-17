@@ -32,6 +32,7 @@ public class Value
       mantissa_small = (mantissa_small>>1)+(mantissa_big&MASK_LOWBIT<<31);
       mantissa_big = (mantissa_big>>1)+(evenHigher&MASK_LOWBIT<<31);
       evenHigher >>= 1;
+      exponent++;
     }
 
     // If value is zero
@@ -43,9 +44,10 @@ public class Value
     // Non-zero
     else
     {
-      if ((mantissa_big & 0x8000000L)==0)
+      while ((mantissa_big & 0x8000000L)==0)
       {
-
+        mantissa_big = mantissa_big<<1+mantissa_small>>31;
+        mantissa_small = mantissa_small<<1&MASK;
       }
     }
   };

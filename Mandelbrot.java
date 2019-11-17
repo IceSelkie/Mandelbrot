@@ -1,4 +1,4 @@
-import val.infiprecision.Value;
+import val.primativedouble.Value;
 
 import java.awt.*;
 import java.math.BigDecimal;
@@ -8,16 +8,17 @@ import java.util.List;
 
 import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.opengl.GL11.*;
-import static val.infiprecision.Value.FOUR;
-import static val.infiprecision.Value.val;
+import static val.primativedouble.Value.FOUR;
+import static val.primativedouble.Value.val;
 
 public class Mandelbrot
 {
   public static int COLORRATE = 5;
   public static final int TILESIZE = 150;
-  public static final int DEPTH = 2048/2;
+  public static final int DEPTH = 4*2048;
   public static final int ANTIALIASING = 1;
   public static final int MAXTHREADS = 4*8+1;
+  public static final String PRECISION = "10000000000000";
   private volatile Integer threadCount = 0; private synchronized int getThreads(){ return threadCount;} private synchronized void addThread(){ if (threadCount >=MAXTHREADS) System.err.println("Attempting to create a thread exceeding thread limit!"); threadCount++;} private synchronized void remThread(){ threadCount--;} private synchronized boolean canStartNewThread(){return threadCount<MAXTHREADS;}
   private volatile List<Thread> threads = Collections.synchronizedList(new ArrayList<Thread>(MAXTHREADS));
   HashMap<HashableView, Color[]> calculated = new HashMap<>(500);
@@ -382,7 +383,7 @@ public class Mandelbrot
     @Override
     public String toString()
     {
-      return new BigDecimal(n).multiply(new BigDecimal("1000000000")).divide(new BigDecimal(d), BigDecimal.ROUND_HALF_UP).divide(new BigDecimal("1000000000")).toString();
+      return new BigDecimal(n).multiply(new BigDecimal(PRECISION)).divide(new BigDecimal(d), BigDecimal.ROUND_HALF_UP).divide(new BigDecimal(PRECISION)).toString();
     }
   }
 

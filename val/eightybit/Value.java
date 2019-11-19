@@ -55,29 +55,29 @@ public class Value
   };
 
   // add
-  public Value add(Value o)
-  {
-    //if (o.equals(ZERO))
-    //  return this;
-    //if (this.equals(ZERO))
-    //  return o;
-    //if (negative^o.negative)
-    //  return sub(o.negate());
-    if (o.exponent>exponent)
-      return o.add(this);
-
-    // O is much smaller
-    if (o.exponent+64<exponent)
-      return this;
-
-    // O is smaller
-    long ret_big = this.mantissa_big + o.mantissa_big>>(exponent-o.exponent);
-    long ret_small = this.mantissa_small + o.mantissa_big<<(32-(exponent-o.exponent))+o.mantissa_small>>(exponent-o.exponent);
-    Value ret = new Value(ret_big, ret_small, exponent, negative);
-    ret.fix();
-    return ret;
-  }
-  public static Value add(Value a, Value b) { return val(a.data+b.data); }
+//  public Value add(Value o)
+//  {
+//    //if (o.equals(ZERO))
+//    //  return this;
+//    //if (this.equals(ZERO))
+//    //  return o;
+//    //if (negative^o.negative)
+//    //  return sub(o.negate());
+//    if (o.exponent>exponent)
+//      return o.add(this);
+//
+//    // O is much smaller
+//    if (o.exponent+64<exponent)
+//      return this;
+//
+//    // O is smaller
+//    long ret_big = this.mantissa_big + o.mantissa_big>>(exponent-o.exponent);
+//    long ret_small = this.mantissa_small + o.mantissa_big<<(32-(exponent-o.exponent))+o.mantissa_small>>(exponent-o.exponent);
+//    Value ret = new Value(ret_big, ret_small, exponent, negative);
+//    ret.fix();
+//    return ret;
+//  }
+//  public static Value add(Value a, Value b) { return val(a.data+b.data); }
 
 //  // multiply
 //  public Value mul(Value o) { return val(data*o.data); }

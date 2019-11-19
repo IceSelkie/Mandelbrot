@@ -21,9 +21,9 @@ import static val.primativedouble.Value.val;
 
 public class Mandelbrot
 {
-  public static double COLORRATE = .025;
+  public static double COLORRATE = 5;
   public static final int TILESIZE = 150; // 150
-  public static final int DEPTH = 4*2048; // 2048  64
+  public static final int DEPTH = 2048; // 2048  64
   public static final int ANTIALIASING = 1; // 1
   public static final int MAXTHREADS = 4*8+1;
   private volatile Integer threadCount = 0; private synchronized int getThreads(){ return threadCount;} private synchronized void addThread(){ if (threadCount >=MAXTHREADS) System.err.println("Attempting to create a thread exceeding thread limit!"); threadCount++;} private synchronized void remThread(){ threadCount--;} private synchronized boolean canStartNewThread(){return threadCount<MAXTHREADS;}
@@ -32,8 +32,8 @@ public class Mandelbrot
   Display.WindowSize w;
 
   // Original
-//  double scale = -7.5;
-//  QP center = qp(q(-1, 2), q(0, 1));
+  double scale = -7.5;
+  QP center = qp(q(-1, 2), q(0, 1));
 
   // ??
   //double scale = -20.5;
@@ -59,8 +59,8 @@ public class Mandelbrot
   //double scale = -13.5;
   //QP center = qp(new Q(new BigInteger(""), new BigInteger("")), new Q(new BigInteger(""), new BigInteger("")));
 
-  double scale = -49.5;
-  QP center = qp(new Q(new BigInteger("-19854057535354568"),BigInteger.TEN.pow(16)),new Q(new BigInteger("-00000260443807927"),BigInteger.TEN.pow(16)));
+//  double scale = -49.5;
+//  QP center = qp(new Q(new BigInteger("-19854057535354568"),BigInteger.TEN.pow(16)),new Q(new BigInteger("-00000260443807927"),BigInteger.TEN.pow(16)));
 
 
   public static void main(String[] args)

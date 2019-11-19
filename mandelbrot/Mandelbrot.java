@@ -1,32 +1,39 @@
+package mandelbrot;
+
+import val.Q;
+import val.QP;
 import val.primativedouble.Value;
 
 import java.awt.*;
-import java.math.BigDecimal;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.math.BigInteger;
 import java.util.*;
 import java.util.List;
 
 import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.opengl.GL11.*;
+import static val.Q.*;
+import static val.QP.qp;
 import static val.primativedouble.Value.FOUR;
 import static val.primativedouble.Value.val;
 
 public class Mandelbrot
 {
-  public static int COLORRATE = 5;
-  public static final int TILESIZE = 25; // 150
-  public static final int DEPTH = 4*2048; // 2048
-  public static final int ANTIALIASING = 16; // 1
+  public static double COLORRATE = .025;
+  public static final int TILESIZE = 150; // 150
+  public static final int DEPTH = 4*2048; // 2048  64
+  public static final int ANTIALIASING = 1; // 1
   public static final int MAXTHREADS = 4*8+1;
-  public static final String PRECISION = "10000000000000000";
   private volatile Integer threadCount = 0; private synchronized int getThreads(){ return threadCount;} private synchronized void addThread(){ if (threadCount >=MAXTHREADS) System.err.println("Attempting to create a thread exceeding thread limit!"); threadCount++;} private synchronized void remThread(){ threadCount--;} private synchronized boolean canStartNewThread(){return threadCount<MAXTHREADS;}
   private volatile List<Thread> threads = Collections.synchronizedList(new ArrayList<Thread>(MAXTHREADS));
   HashMap<HashableView, Color[]> calculated = new HashMap<>(500);
   Display.WindowSize w;
 
   // Original
-  //double scale = -7.5;
-  //QP center = qp(q(-1, 2), q(0, 1));
+//  double scale = -7.5;
+//  QP center = qp(q(-1, 2), q(0, 1));
 
   // ??
   //double scale = -20.5;
@@ -41,8 +48,8 @@ public class Mandelbrot
   //QP center = qp(new Q(new BigInteger("-85241514145487948761243"), new BigInteger("572479338973652582400000")), new Q(new BigInteger("-7047730329760827785407283"), new BigInteger("6869752067683830988800000")));
 
   // 02
-  double scale = -45.0;
-  QP center = qp(new Q(new BigInteger("-824405337713456342058634333124188673418821894144"), new BigInteger("5536680432649312569992785998100296189031219200000")), new Q(new BigInteger("-68161465287625812021748692727096276126856290238464"), new BigInteger("66440165191791750839913431977203554268374630400000")));
+//  double scale = -45.0;
+//  QP center = qp(new Q(new BigInteger("-824405337713456342058634333124188673418821894144"), new BigInteger("5536680432649312569992785998100296189031219200000")), new Q(new BigInteger("-68161465287625812021748692727096276126856290238464"), new BigInteger("66440165191791750839913431977203554268374630400000")));
 
   //Now centered on (-0.1488988479182952 + -1.0259075228224855 * i) (-156351065007566805536679717902520180585184297051059600526282234912293357272305181740113695589501876635357821471771652298663040820339068108800000/1050048856612784811624118896102900188226486902730961598736571103158496705677236567292605696792464875546003256803410319985501278977392640000000000 + i * -12927036255962464080151345488248209469761598172246797660221691866872273692602486962073929305996030740650276902171941681540968122573928372633600000/12600586279353417739489426753234802258717842832771539184838853237901960468126838807511268361509578506552039081640923839826015347728711680000000000)
   //double scale = -55.0;
@@ -52,20 +59,22 @@ public class Mandelbrot
   //double scale = -13.5;
   //QP center = qp(new Q(new BigInteger(""), new BigInteger("")), new Q(new BigInteger(""), new BigInteger("")));
 
+  double scale = -49.5;
+  QP center = qp(new Q(new BigInteger("-19854057535354568"),BigInteger.TEN.pow(16)),new Q(new BigInteger("-00000260443807927"),BigInteger.TEN.pow(16)));
+
 
   public static void main(String[] args)
   {
-    if (args.length>=1)
-      COLORRATE = new Integer(args[0]);
-    if (COLORRATE<1)
-      COLORRATE = 5;
-    new Display().run();
+    if (args.length!=0)
+      Headless.headless(args);
+    else
+      new Display().run();
   }
 
   public void doClick()
   {
     Point pt = Display.getCursorLocationOrigin(w);
-    Q scaleFactor = q(2).pow((int) scale).m(trot((int) (scale * 10) % 10));
+    Q scaleFactor = q(2).pow((int) scale).m(rot_to_milli(scale%1));
     center = qp(center.x.a(q(pt.x - w.w / 2).m(scaleFactor)), center.y.s(q(w.h / 2 - pt.y).m(scaleFactor)));
 
     clearThreads();
@@ -78,19 +87,60 @@ public class Mandelbrot
   {
     if (action==GLFW_RELEASE)
     {
+      boolean scaleChange = false;
       if (key == GLFW_KEY_EQUAL || key == GLFW_KEY_KP_ADD)
       {
         scale += .5 * -1;
+        System.err.println("Zoom Reset");
         clearThreads();
+        scaleChange = true;
       }
       if (key == GLFW_KEY_MINUS|| key == GLFW_KEY_KP_SUBTRACT)
       {
         scale += .5 * 1;
+        System.err.println("Zoom Reset");
         clearThreads();
+        scaleChange = true;
       }
-      System.out.println("The scale is now: " + scale);
+      if (scaleChange) System.out.println("The scale is now: " + scale);
+      if (key== GLFW_KEY_S)
+      {
+        String filename = (System.currentTimeMillis()/1000)+"s"+scale+"x"+center.x+"y"+center.y+".png";
+        Headless.saveImage(filename,w.w,w.h,precalculated);
+      }
+      String latestFile = "last.mandel";
+      if (key==GLFW_KEY_W)
+      {
+        System.out.println("Starting text file location save at: "+latestFile);
+        try {
+          FileWriter fw = new FileWriter(latestFile);
+          fw.write(scale+"\n");
+          fw.write(center.x+"\n");
+          fw.write(center.y.toString());
+          fw.close();
+          System.out.println("Location data saved as text.");
+        } catch (IOException e)
+        {
+          System.err.println("Unable to save location.");
+        }
+      }
+      if (key==GLFW_KEY_R)
+      {
+        try {
+          Scanner scanner = new Scanner(new File(latestFile));
+          scale=new Double(scanner.nextLine());
+          center = qp(q(scanner.nextLine()),q(scanner.nextLine()));
+          clearThreads();
+          calculated.clear();
+          System.out.printf("%sNow centered on (%s + %s * i) (%s/%s + i * %s/%s)%s", "\n", center.x, center.y, center.x.n, center.x.d, center.y.n, center.y.d,"\n");
+        } catch (IOException e)
+        {
+          System.err.println("Unable to save location.");
+        }
+      }
     }
   }
+  Color[] precalculated = null;
   public void display()
   {
     if (!Display.w.equals(this.w))
@@ -102,7 +152,7 @@ public class Mandelbrot
     HashableView hv = new HashableView(center, scale);
     int hvhc = hv.hashCode();
 
-    Color[] precalculated = null;
+    precalculated = null;
     for (HashableView h : calculated.keySet())
       if (h.hashCode() == hvhc)
         precalculated = calculated.get(h);
@@ -160,7 +210,7 @@ public class Mandelbrot
     calculated.put(hv, clrset);
     Thread runner = new Thread(()->
     {
-      Q scaleFactor = q(2).pow((int) scale).m(trot((int) (scale * 10) % 10));
+      Q scaleFactor = q(2).pow((int) scale).m(rot_to_milli(scale%1));
       Q scaleFactorSmall = scaleFactor.m(q(1,ANTIALIASING));
       HashSet<int[]> tiles = new HashSet<>();
       for (int y = -w.h/2; y < w.h/2; y+=TILESIZE)
@@ -201,10 +251,10 @@ public class Mandelbrot
                     else
                       rate--;
                     if (rate!=0)
-                      steps = ((COLORRATE*(steps+1)) / rate)%360;
+                      steps = (int)(((COLORRATE*(steps+1)) / rate)%360);
                 } catch (Exception e)
                 {
-                  System.out.println("{"+hv.pt.x.a(scaleFactor.m(x)).toString()+","+qy.toString()+"}");
+                  System.out.println("{"+qx.toString()+","+qy.toString()+"}");
                 }
                 synchronized (clrset)
                 {
@@ -300,26 +350,6 @@ public class Mandelbrot
   {
     return x*x;
   }
-  public static Q q(long n, long d)
-  {
-    return new Q(n, d);
-  }
-
-  public static Q q(long n)
-  {
-    return new Q(n, 1);
-  }
-
-  public static Q trot(int pow)
-  {
-    final Q trot = q(3330,3107);
-    return trot.pow(pow);
-  }
-
-  public static QP qp(Q x, Q y)
-  {
-    return new QP(x, y);
-  }
 
   public static class HashableView
   {
@@ -335,99 +365,6 @@ public class Mandelbrot
     public int hashCode()
     {
       return new Integer(pt.hashCode() ^ ((Double) scl).hashCode()).hashCode();
-    }
-  }
-
-  public static class Q
-  {
-    BigInteger n, d;
-
-    public Q(BigInteger n, BigInteger d)
-    {
-      this.n = n;
-      this.d = d;
-    }
-
-    public Q(long n, long d)
-    {
-      this.n = new BigInteger(n + "");
-      this.d = new BigInteger(d + "");
-    }
-
-    public Q m(Q o)
-    {
-      return new Q(n.multiply(o.n), d.multiply(o.d));
-    }
-
-    public Q m(int coeff)
-    {
-      return new Q(n.multiply(new BigInteger(coeff + "")), d);
-    }
-
-    public Q a(Q o)
-    {
-      return new Q(n.multiply(o.d).add(o.n.multiply(d)), d.multiply(o.d));
-    }
-
-    public Q s(Q o)
-    {
-      return new Q(n.multiply(o.d).subtract(o.n.multiply(d)), d.multiply(o.d));
-    }
-
-    public int hashCode()
-    {
-      return new Integer(n.hashCode() ^ d.hashCode()).hashCode();
-    }
-
-    public Q pow(int ex)
-    {
-      if (ex == 0)
-        return new Q(1, 1);
-      Q base = this;
-      if (ex < 0)
-      {
-        base = reci();
-        ex = Math.abs(ex);
-      }
-      Q ret = base;
-
-      while (ex-- > 1)
-        ret = ret.m(base);
-      return ret;
-    }
-
-    public Q reci()
-    {
-      return new Q(d, n);
-    }
-
-    @Override
-    public String toString()
-    {
-      return new BigDecimal(n).multiply(new BigDecimal(PRECISION)).divide(new BigDecimal(d), BigDecimal.ROUND_HALF_UP).divide(new BigDecimal(PRECISION)).toString();
-    }
-  }
-
-  public static class QP
-  {
-    Q x, y;
-
-    public QP(Q x, Q y)
-    {
-      this.x = x;
-      this.y = y;
-    }
-
-    @Override
-    public int hashCode()
-    {
-      return new Integer(x.hashCode() ^ y.hashCode()).hashCode();
-    }
-
-    @Override
-    public String toString()
-    {
-      return "{"+x+", "+y+"}";
     }
   }
 }

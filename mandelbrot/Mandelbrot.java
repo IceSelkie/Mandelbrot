@@ -31,7 +31,9 @@ public class Mandelbrot
   private volatile Integer threadCount = 0; private synchronized int getThreads(){ return threadCount;} private synchronized void addThread(){ if (threadCount >=MAXTHREADS) System.err.println("Attempting to create a thread exceeding thread limit!"); threadCount++;} private synchronized void remThread(){ threadCount--;} private synchronized boolean canStartNewThread(){return threadCount<MAXTHREADS;}
   private volatile List<Thread> threads = Collections.synchronizedList(new ArrayList<Thread>(MAXTHREADS));
   HashMap<HashableView, Color[]> calculated = new HashMap<>(20);
-  Display.WindowSize w;
+  Display.WindowSize display;
+  Display.WindowSize actual = new Display.WindowSize(3840,2160);
+  Display.WindowSize use;
 
   // Original
 //  double scale = -7.5;
@@ -76,9 +78,9 @@ public class Mandelbrot
 
   public void doClick()
   {
-    Point pt = Display.getCursorLocationOrigin(w);
+    Point pt = Display.getCursorLocationOrigin(display);
     Q scaleFactor = srot(scale);
-    center = qp(center.x.a(q(pt.x - w.w / 2).m(scaleFactor)), center.y.s(q(w.h / 2 - pt.y).m(scaleFactor)));
+    center = qp(center.x.a(q(pt.x - display.w / 2).m(scaleFactor)), center.y.s(q(display.h / 2 - pt.y).m(scaleFactor)));
 
     clearThreads();
     calculated.clear();
@@ -95,17 +97,22 @@ public class Mandelbrot
   {
     if (action==GLFW_RELEASE)
     {
+      // Plus -> Zoom In
       if (key == GLFW_KEY_EQUAL || key == GLFW_KEY_KP_ADD)
         zoom(-ZOOMSCALE);
+      // Minus -> Zoom Out
       if (key == GLFW_KEY_MINUS|| key == GLFW_KEY_KP_SUBTRACT)
         zoom(ZOOMSCALE);
+      // S -> Save Image
       if (key== GLFW_KEY_S)
       {
         s = true;
         String filename = ("render/"+"MandelbrotRender"+"t"+System.currentTimeMillis()/1000)+"_"+center.x+"+"+center.y+"i"+"_"+"Zoom"+scale+"_"+"CLR"+COLORRATE+"_"+"DPTH"+DEPTH+"_"+"AA"+ANTIALIASING+".png";
-        Headless.saveImage(filename,w.w,w.h,precalculated);
+        Headless.saveImage(filename, display.w, display.h,precalculated);
       }
+
       String latestFile = "last.mandel";
+      // W -> Write View Parameters To File
       if (key==GLFW_KEY_W)
       {
         System.out.println("Starting text file location save at: "+latestFile);
@@ -121,6 +128,7 @@ public class Mandelbrot
           System.err.println("Unable to save location.");
         }
       }
+      // R -> Read View Parameters From File
       if (key==GLFW_KEY_R)
       {
         loop = false;
@@ -138,15 +146,28 @@ public class Mandelbrot
           System.err.println("Unable to save location.");
         }
       }
+      // L -> Start Render Loop
+      // See S. If last action was save, loop will save at each iteration.
       if (key==GLFW_KEY_L)
       {
         loop = !loop;
         loopindex = 0;
       }
+      // Z -> Zoom Reset (Zooms out, or if all the way zoomed out, zoom all the way in.)
       if (key==GLFW_KEY_Z)
       {
-        scale = -7.5;
+        if (scale!=-7.5)
+          scale = -7.5;
+        else
+          scale = -50;
         zoom(0);
+      }
+      if (key==GLFW_KEY_V)
+      {
+        if (use==display)
+          use = actual;
+        else
+          use = display;
       }
 
       if (key!=GLFW_KEY_S && key!=GLFW_KEY_L)
@@ -166,13 +187,15 @@ public class Mandelbrot
   Color[] precalculated = null;
   public void display()
   {
-    if (!Display.w.equals(this.w))
+    if (!Display.w.equals(this.display))
     {
-      calculated.clear();
-      clearThreads();
-      this.w = Display.w;
+      if (use==display) {
+        calculated.clear();
+        clearThreads();
+      }
+      this.display = Display.w;
     }
-    HashableView hv = new HashableView(center, scale);
+    HashableView hv = new HashableView(use, center, scale);
     int hvhc = hv.hashCode();
 
     precalculated = null;
@@ -197,15 +220,15 @@ public class Mandelbrot
     }
 
     if (precalculated == null || (getThreads()==0 && cont(precalculated,null)))
-      calculate(hv);
+      calculate(hv); //TODO
     else
-      display(precalculated);
+      display(precalculated); //TODO
     if (precalculated!=null && loop && !cont(precalculated,null))
     {
       if (s)
       {
         String filename = ("render/series/MandelbrotRender"+ (loopindex++) +".png");
-        Headless.saveImage(filename,w.w,w.h,precalculated);
+        Headless.saveImage(filename, display.w, display.h,precalculated);
         calculated.clear();
       }
       zoom(-ZOOMSCALE);
@@ -223,10 +246,10 @@ public class Mandelbrot
   public void display(Color[] data)
   {
     glPointSize(5f);
-    for (int y = 0; y < w.h; y++)
-      for (int x = 0; x < w.w; x++)
+    for (int y = 0; y < display.h; y++)
+      for (int x = 0; x < display.w; x++)
       {
-        Color c = data[w.w * y + x];
+        Color c = data[display.w * y + x];
         if (c != null)
           Display.setColor3(c);
         else
@@ -239,17 +262,17 @@ public class Mandelbrot
 
   public void calculate(HashableView hv)
   {
-    Color[] clrset = new Color[w.w*w.h];
+    Color[] clrset = new Color[display.w*display.h];
     calculated.put(hv, clrset);
     Thread runner = new Thread(()->
     {
       Q scaleFactor = srot(scale);
       Q scaleFactorSmall = scaleFactor.m(q(1,ANTIALIASING));
       HashSet<int[]> tiles = new HashSet<>();
-      for (int y = -w.h/2; y < w.h/2; y+=TILESIZE)
-        for (int x = -w.w/2; x < w.w/2; x+=TILESIZE)
+      for (int y = -display.h/2; y < display.h/2; y+=TILESIZE)
+        for (int x = -display.w/2; x < display.w/2; x+=TILESIZE)
         {
-          int[] toPut = new int[]{x, y, Display.normalizeInt(x + TILESIZE - 1, -w.w / 2, w.w / 2 - 1), Display.normalizeInt(y + TILESIZE - 1, -w.h / 2, w.h / 2 - 1)};
+          int[] toPut = new int[]{x, y, Display.normalizeInt(x + TILESIZE - 1, -display.w / 2, display.w / 2 - 1), Display.normalizeInt(y + TILESIZE - 1, -display.h / 2, display.h / 2 - 1)};
           tiles.add(toPut);
         }
       Iterator<int[]> tileSet= tiles.iterator();
@@ -263,7 +286,7 @@ public class Mandelbrot
             for (int y = workTile[1]; y <= workTile[3]; y++)
             {
               Q qy = (hv.pt.y.a(scaleFactor.m(y)));
-              int yPositionOffset = (y + w.h / 2) * w.w + w.w / 2;
+              int yPositionOffset = (y + display.h / 2) * display.w + display.w / 2;
               for (int x = workTile[0]; x <= workTile[2]; x++)
               {
                 Q qx = hv.pt.x.a(scaleFactor.m(x));
@@ -386,18 +409,21 @@ public class Mandelbrot
 
   public static class HashableView
   {
+    Display.WindowSize size;
     QP pt;
     double scl;
 
-    public HashableView(QP point, double scale)
+    public HashableView(Display.WindowSize size, QP point, double scale)
     {
+      this.size = size;
       pt = point;
       scl = scale;
     }
 
     public int hashCode()
     {
-      return new Integer(pt.hashCode() ^ ((Double) scl).hashCode()).hashCode();
+      return Arrays.hashCode(new Object[]{size, pt, scl});
+      //return new Integer(pt.hashCode() ^ ((Double) scl).hashCode()).hashCode();
     }
   }
 }

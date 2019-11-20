@@ -23,10 +23,10 @@ public class Mandelbrot
 {
   public static double COLORRATE = 1D/2D;
   public static final int TILESIZE = 150; // 150
-  public static final int DEPTH = 2048*4; // 2048  64
-  public static final int ANTIALIASING = 4; // 1
+  public static final int DEPTH = 2048; // 2048  64
+  public static final int ANTIALIASING = 1; // 1
   public static final int MAXTHREADS = 4*8+1;
-  public static final double ZOOMSCALE = 1D/64;
+  public static final double ZOOMSCALE = 1D/1;
 
   private volatile Integer threadCount = 0; private synchronized int getThreads(){ return threadCount;} private synchronized void addThread(){ if (threadCount >=MAXTHREADS) System.err.println("Attempting to create a thread exceeding thread limit!"); threadCount++;} private synchronized void remThread(){ threadCount--;} private synchronized boolean canStartNewThread(){return threadCount<MAXTHREADS;}
   private volatile List<Thread> threads = Collections.synchronizedList(new ArrayList<Thread>(MAXTHREADS));
@@ -90,6 +90,7 @@ public class Mandelbrot
 
   private static boolean s = false;
   private static boolean loop = false;
+  private static int loopindex = 0;
   public void keyPress(int key, int action)
   {
     if (action==GLFW_RELEASE)
@@ -140,6 +141,7 @@ public class Mandelbrot
       if (key==GLFW_KEY_L)
       {
         loop = !loop;
+        loopindex = 0;
       }
       if (key==GLFW_KEY_Z)
       {
@@ -202,7 +204,7 @@ public class Mandelbrot
     {
       if (s)
       {
-        String filename = ("render/"+"MandelbrotRender"+center.x+"+"+center.y+"i"+"AtZoom"+scale+"t"+System.currentTimeMillis()/1000)+".png";
+        String filename = ("render/series/MandelbrotRender"+ (loopindex++) +".png");
         Headless.saveImage(filename,w.w,w.h,precalculated);
         calculated.clear();
       }

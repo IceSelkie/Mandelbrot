@@ -187,6 +187,7 @@ public class Display
    */
   private void terminate()
   {
+    mandelbrot.clearThreads();
     // Free the window callbacks and destroy the window
     glfwFreeCallbacks(window);
     glfwDestroyWindow(window);

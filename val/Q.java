@@ -7,7 +7,11 @@ import java.util.regex.Pattern;
 
 public class Q
 {
-  public static final String PRECISION = "10000000000000000";
+  private static final String PRECISION = "10000000000000000";
+  public static final String X = PRECISION+"0000000000000000";
+  public static final BigInteger HALFPRECISION = new BigInteger("100000000");
+  public static final BigDecimal BIGPRECISION = new BigDecimal(PRECISION);
+  public static final BigDecimal BIGPRECISIONX = new BigDecimal(X);
   public BigInteger n, d;
 
   public Q(BigInteger n, BigInteger d)
@@ -73,29 +77,52 @@ public class Q
   {
     if (d.equals(BigInteger.ZERO))
       return n+"/"+d;
-    return new BigDecimal(n).multiply(new BigDecimal(PRECISION)).divide(new BigDecimal(d), BigDecimal.ROUND_HALF_UP).divide(new BigDecimal(PRECISION)).toString();
+
+    BigDecimal localPrecision;
+    if (HALFPRECISION.multiply(n).compareTo(d) < 0)
+      localPrecision =BIGPRECISIONX;
+    else
+      localPrecision = BIGPRECISION;
+    return new BigDecimal(n).multiply(localPrecision).divide(new BigDecimal(d), BigDecimal.ROUND_HALF_UP).divide(localPrecision).toString();
   }
 
+  @Deprecated
   public static Q trot(int pow)
   {
     final Q trot = q(3330, 3107);
     return trot.pow(pow);
   }
 
+  @Deprecated
   public static Q centi_rot(int pow)
   {
-    final Q hrot = q(1882,1869);
+    final Q hrot = q(1882, 1869);
     return hrot.pow(pow);
   }
 
+  @Deprecated
   public static Q milli_rot(int pow)
   {
-    final Q hrot = q(7216,7211);
+    final Q hrot = q(7216, 7211);
     return hrot.pow(pow);
   }
+
+  @Deprecated
   public static Q rot_to_milli(double pow)
   {
     return trot((int)(pow%10*10)).m(centi_rot((int)(pow*10%10*10))).m(milli_rot((int)(pow*100%10*10)));
+  }
+
+  public static Q srot(double pow)
+  {
+    //System.out.println("SROT -> 2^"+(((int)Math.round(64*pow))/64)+" (1/64)^"+(((int)Math.round(64*pow))%64)+" ("+(pow*64)+") ("+pow+")");
+    return q(2).pow(((int)Math.round(64*pow))/64).m(srot(((int)Math.round(64*pow))%64));
+  }
+
+  public static Q srot(int pow)
+  {
+    final Q srot = q(557, 551);
+    return srot.pow(pow);
   }
 
   public static Q q(long n, long d)

@@ -184,7 +184,7 @@ public class Headless
 
     //long threadid = System.nanoTime()%1000000;
     //System.out.println(threadid+" started!");
-    Q scaleFactor = q(2).pow((int)scale).m(rot_to_milli(scale%1));
+    Q scaleFactor = srot(scale);
     Q scaleFactorSmall = scaleFactor.m(q(1, antialiasing));
     HashSet<int[]> tiles = new HashSet<>();
     for (int y = -height/2; y < height/2; y += tilesize)

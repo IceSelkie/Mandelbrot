@@ -21,16 +21,16 @@ import static val.primativedouble.Value.val;
 
 public class Mandelbrot
 {
-  public static double COLORRATE = 1;
+  public static double COLORRATE = 1D/2D;
   public static final int TILESIZE = 150; // 150
-  public static final int DEPTH = 2048; // 2048  64
-  public static final int ANTIALIASING = 1; // 1
+  public static final int DEPTH = 2048*4; // 2048  64
+  public static final int ANTIALIASING = 4; // 1
   public static final int MAXTHREADS = 4*8+1;
-  public static final double ZOOMSCALE = .1;
+  public static final double ZOOMSCALE = 1D/64;
 
   private volatile Integer threadCount = 0; private synchronized int getThreads(){ return threadCount;} private synchronized void addThread(){ if (threadCount >=MAXTHREADS) System.err.println("Attempting to create a thread exceeding thread limit!"); threadCount++;} private synchronized void remThread(){ threadCount--;} private synchronized boolean canStartNewThread(){return threadCount<MAXTHREADS;}
   private volatile List<Thread> threads = Collections.synchronizedList(new ArrayList<Thread>(MAXTHREADS));
-  HashMap<HashableView, Color[]> calculated = new HashMap<>(500);
+  HashMap<HashableView, Color[]> calculated = new HashMap<>(20);
   Display.WindowSize w;
 
   // Original
@@ -77,7 +77,7 @@ public class Mandelbrot
   public void doClick()
   {
     Point pt = Display.getCursorLocationOrigin(w);
-    Q scaleFactor = q(2).pow((int) scale).m(rot_to_milli(scale%1));
+    Q scaleFactor = srot(scale);
     center = qp(center.x.a(q(pt.x - w.w / 2).m(scaleFactor)), center.y.s(q(w.h / 2 - pt.y).m(scaleFactor)));
 
     clearThreads();
@@ -94,7 +94,6 @@ public class Mandelbrot
   {
     if (action==GLFW_RELEASE)
     {
-      boolean scaleChange = false;
       if (key == GLFW_KEY_EQUAL || key == GLFW_KEY_KP_ADD)
         zoom(-ZOOMSCALE);
       if (key == GLFW_KEY_MINUS|| key == GLFW_KEY_KP_SUBTRACT)
@@ -102,7 +101,7 @@ public class Mandelbrot
       if (key== GLFW_KEY_S)
       {
         s = true;
-        String filename = ("render/"+"MandelbrotRender"+center.x+"+"+center.y+"i"+"AtZoom"+scale+"t"+System.currentTimeMillis()/1000)+".png";
+        String filename = ("render/"+"MandelbrotRender"+"t"+System.currentTimeMillis()/1000)+"_"+center.x+"+"+center.y+"i"+"_"+"Zoom"+scale+"_"+"CLR"+COLORRATE+"_"+"DPTH"+DEPTH+"_"+"AA"+ANTIALIASING+".png";
         Headless.saveImage(filename,w.w,w.h,precalculated);
       }
       String latestFile = "last.mandel";
@@ -132,6 +131,7 @@ public class Mandelbrot
           clearThreads();
           calculated.clear();
           System.out.printf("%sNow centered on (%s + %s * i) (%s/%s + i * %s/%s)%s", "\n", center.x, center.y, center.x.n, center.x.d, center.y.n, center.y.d,"\n");
+          zoom(0);
         } catch (IOException e)
         {
           System.err.println("Unable to save location.");
@@ -140,6 +140,11 @@ public class Mandelbrot
       if (key==GLFW_KEY_L)
       {
         loop = !loop;
+      }
+      if (key==GLFW_KEY_Z)
+      {
+        scale = -7.5;
+        zoom(0);
       }
 
       if (key!=GLFW_KEY_S && key!=GLFW_KEY_L)
@@ -153,8 +158,7 @@ public class Mandelbrot
   {
     scale += zoomscale;
     clearThreads();
-    System.out.println("The scale is now: " + scale);
-    System.out.println("The scale is now: " + (q(2).pow((int) scale).m(rot_to_milli(scale%1))));
+    System.out.println("The scale is now: " + scale + " (Pixel Size: "+srot(scale)+")");
   }
 
   Color[] precalculated = null;
@@ -194,13 +198,13 @@ public class Mandelbrot
       calculate(hv);
     else
       display(precalculated);
-    //if (precalculated!=null && loop && !cont(precalculated,null))
+    if (precalculated!=null && loop && !cont(precalculated,null))
     {
-      //if (s)
+      if (s)
       {
-    //    String filename = ("render/"+"MandelbrotRender"+center.x+"+"+center.y+"i"+"AtZoom"+scale+"t"+System.currentTimeMillis()/1000)+".png";
-    //    Headless.saveImage(filename,w.w,w.h,precalculated);
-    //    calculated.clear();
+        String filename = ("render/"+"MandelbrotRender"+center.x+"+"+center.y+"i"+"AtZoom"+scale+"t"+System.currentTimeMillis()/1000)+".png";
+        Headless.saveImage(filename,w.w,w.h,precalculated);
+        calculated.clear();
       }
       zoom(-ZOOMSCALE);
     }
@@ -237,7 +241,7 @@ public class Mandelbrot
     calculated.put(hv, clrset);
     Thread runner = new Thread(()->
     {
-      Q scaleFactor = q(2).pow((int) scale).m(rot_to_milli(scale%1));
+      Q scaleFactor = srot(scale);
       Q scaleFactorSmall = scaleFactor.m(q(1,ANTIALIASING));
       HashSet<int[]> tiles = new HashSet<>();
       for (int y = -w.h/2; y < w.h/2; y+=TILESIZE)

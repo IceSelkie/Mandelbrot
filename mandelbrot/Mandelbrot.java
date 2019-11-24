@@ -22,9 +22,9 @@ import static val.primativedouble.Value.val;
 public class Mandelbrot
 {
   public static double COLORRATE = 1D/8D;
-  public static final int TILESIZE = 250; // 150
+  public static final int TILESIZE = 150; // 150
   public static final int DEPTH = 8*2048; // 2048  64
-  public static final int ANTIALIASING = 4; // 1
+  public static final int ANTIALIASING = 1; // 1
   public static final int MAXTHREADS = 4*8+1;
   public static final double ZOOMSCALE = 1D/8;
 
@@ -186,6 +186,7 @@ public class Mandelbrot
   }
 
   Color[] precalculated = null;
+  long startTime;
   public void display()
   {
     if (!Display.w.equals(this.display))
@@ -222,14 +223,16 @@ public class Mandelbrot
       }
     }
 
-    if (precalculated == null || (getThreads()==0 && cont(precalculated,null)))
+    if (precalculated == null || (getThreads()==0 && cont(precalculated,null))) {
+      startTime=System.currentTimeMillis();
       calculate(hv);
+    }
     else
       display(precalculated); //TODO
     if (precalculated!=null && !cont(precalculated,null)) {
       if(!notice)
       {
-        System.out.println("Done!");
+        System.out.println("Done! (frame complete in "+(System.currentTimeMillis()-startTime)/1000D+"s)");
         notice = true;
       }
       if (loop) {
@@ -306,32 +309,36 @@ public class Mandelbrot
                 Q qx = hv.pt.x.a(scaleFactor.m(x));
                 long steps = -1;
                 int rate = ANTIALIASING*ANTIALIASING;
+                Color clrave = Color.BLACK;
                 try {
                   long[] d = new long[ANTIALIASING*ANTIALIASING];
-                  for (int y2 = 0; y2<ANTIALIASING; y2++)
-                    for (int x2 = 0; x2<ANTIALIASING; x2++)
+                  for (int y2 = 0; y2 < ANTIALIASING; y2++)
+                    for (int x2 = 0; x2 < ANTIALIASING; x2++)
                       // Decimal Type
                       d[y2*ANTIALIASING+x2] = countStepsValue(val(qx.a(scaleFactorSmall.m(x2)).toString()), val(qy.a(scaleFactorSmall.m(y2)).toString()), DEPTH);
-                      // Quotient Type
-                      //d[y2*ANTIALIASING+x2] = countStepsValue(val(qx.n,qx.d), val(qy.n,qy.d), DEPTH);
+                  // Quotient Type
+                  //d[y2*ANTIALIASING+x2] = countStepsValue(val(qx.n,qx.d), val(qy.n,qy.d), DEPTH);
 
-                  for (int i = 0; i<ANTIALIASING*ANTIALIASING; i++)
-                    if (d[i]!=-1)
-                      steps+=d[i];
-                    else
-                      rate--;
-                    if (rate!=0)
-                      steps = (int)(((COLORRATE*(steps+1)) / rate)%360);
+                  int red = 0, green = 0, blue = 0;
+                  for (int i = 0; i < ANTIALIASING*ANTIALIASING; i++)
+                    if (d[i] != -1) {
+                      Color loc = Display.hsb4ToColor((int)(d[i]%360L), 90, rate*90, 255);
+                      red += loc.getRed();
+                      green += loc.getGreen();
+                      blue += loc.getBlue();
+                    }
+                  clrave = new Color(red/(ANTIALIASING*ANTIALIASING),green/(ANTIALIASING*ANTIALIASING),blue/(ANTIALIASING*ANTIALIASING));
                 } catch (Exception e)
                 {
                   System.out.println("{"+qx.toString()+","+qy.toString()+"}");
                 }
                 synchronized (clrset)
                 {
-                  if (steps == -1)
-                    clrset[yPositionOffset + x] = Color.BLACK;
-                  else
-                    clrset[yPositionOffset + x] = Display.hsb4ToColor((int)steps, 90, rate*90, 255);
+                  clrset[yPositionOffset+x] = clrave;
+                  //if (steps == -1)
+                  //  clrset[yPositionOffset + x] = Color.BLACK;
+                  //else
+                  //  clrset[yPositionOffset + x] = Display.hsb4ToColor((int)steps, 90, rate*90, 255);
                 }
               }
             }

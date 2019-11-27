@@ -21,19 +21,20 @@ import static val.primativedouble.Value.val;
 
 public class Mandelbrot
 {
-  public static double COLORRATE = 1D/8D;
+  public static double COLORRATE = 4D/1D;
   public static final int TILESIZE = 150; // 150
-  public static final int DEPTH = 8*2048; // 2048  64
-  public static final int ANTIALIASING = 1; // 1
+  public static final int DEPTH = 2048; // 2048  render 8x
+  public static final int ANTIALIASING = 4; // 1 render 16x
   public static final int MAXTHREADS = 4*8+1;
-  public static final double ZOOMSCALE = 1D/8;
+  public static final double ZOOMSCALE = 1D/8; // render 8
 
   private volatile Integer threadCount = 0; private synchronized int getThreads(){ return threadCount;} private synchronized void addThread(){ if (threadCount >=MAXTHREADS) System.err.println("Attempting to create a thread exceeding thread limit!"); threadCount++;} private synchronized void remThread(){ threadCount--;} private synchronized boolean canStartNewThread(){return threadCount<MAXTHREADS;}
   private volatile List<Thread> threads = Collections.synchronizedList(new ArrayList<Thread>(MAXTHREADS));
   HashMap<HashableView, Color[]> calculated = new HashMap<>(20);
-  Display.WindowSize display;
-  Display.WindowSize actual = new Display.WindowSize(3840,2160);
-  Display.WindowSize use;
+  Display.WindowSize display_size;
+  final Display.WindowSize render_size = new Display.WindowSize(800*4,600*4);
+  final int render_display_ratio = 4;
+  Display.WindowSize current_size;
 
   // Original
 //  double scale = -7.5;
@@ -52,8 +53,8 @@ public class Mandelbrot
   //QP center = qp(new Q(new BigInteger("-85241514145487948761243"), new BigInteger("572479338973652582400000")), new Q(new BigInteger("-7047730329760827785407283"), new BigInteger("6869752067683830988800000")));
 
   // 02
-  //double scale = -45.0;
-  double scale = -41;
+  double scale = -46.0;
+//  double scale = -41;
   QP center = qp(new Q(new BigInteger("-824405337713456342058634333124188673418821894144"), new BigInteger("5536680432649312569992785998100296189031219200000")), new Q(new BigInteger("-68161465287625812021748692727096276126856290238464"), new BigInteger("66440165191791750839913431977203554268374630400000")));
 
   //Now centered on (-0.1488988479182952 + -1.0259075228224855 * i) (-156351065007566805536679717902520180585184297051059600526282234912293357272305181740113695589501876635357821471771652298663040820339068108800000/1050048856612784811624118896102900188226486902730961598736571103158496705677236567292605696792464875546003256803410319985501278977392640000000000 + i * -12927036255962464080151345488248209469761598172246797660221691866872273692602486962073929305996030740650276902171941681540968122573928372633600000/12600586279353417739489426753234802258717842832771539184838853237901960468126838807511268361509578506552039081640923839826015347728711680000000000)
@@ -78,9 +79,9 @@ public class Mandelbrot
 
   public void doClick()
   {
-    Point pt = Display.getCursorLocationOrigin(display);
+    Point pt = Display.getCursorLocationOrigin(display_size);
     Q scaleFactor = srot(scale);
-    center = qp(center.x.a(q(pt.x - display.w / 2).m(scaleFactor)), center.y.s(q(display.h / 2 - pt.y).m(scaleFactor)));
+    center = qp(center.x.a(q(pt.x - display_size.w / 2).m(scaleFactor)), center.y.s(q(display_size.h / 2 - pt.y).m(scaleFactor)));
 
     clearThreads();
     calculated.clear();
@@ -109,7 +110,7 @@ public class Mandelbrot
       {
         s = true;
         String filename = ("render/"+"MandelbrotRender"+"t"+System.currentTimeMillis()/1000)+"_"+center.x+"+"+center.y+"i"+"_"+"Zoom"+scale+"_"+"CLR"+COLORRATE+"_"+"DPTH"+DEPTH+"_"+"AA"+ANTIALIASING+".png";
-        Headless.saveImage(filename, use.w, use.h,precalculated);
+        Headless.saveImage(filename, current_size.w, current_size.h,precalculated);
       }
 
       String latestFile = "last.mandel";
@@ -165,10 +166,10 @@ public class Mandelbrot
       }
       if (key==GLFW_KEY_V)
       {
-        if (use==display)
-          use = actual;
+        if (current_size == display_size)
+          current_size = render_size;
         else
-          use = display;
+          current_size = display_size;
       }
 
       if (key!=GLFW_KEY_S && key!=GLFW_KEY_L)
@@ -189,17 +190,17 @@ public class Mandelbrot
   long startTime;
   public void display()
   {
-    if (!Display.w.equals(this.display))
+    if (!Display.w.equals(this.display_size))
     {
-      if (use==display) {
+      if (current_size == display_size) {
         calculated.clear();
         clearThreads();
       }
-      this.display = Display.w;
+      this.display_size = Display.w;
     }
-    if (use==null)
-      use=display;
-    HashableView hv = new HashableView(use, center, scale);
+    if (current_size ==null)
+      current_size = display_size;
+    HashableView hv = new HashableView(current_size, center, scale);
     int hvhc = hv.hashCode();
 
     precalculated = null;
@@ -238,7 +239,7 @@ public class Mandelbrot
       if (loop) {
         if (s) {
           String filename = ("render/series/MandelbrotRender"+(loopindex++)+".png");
-          Headless.saveImage(filename, display.w, display.h, precalculated);
+          Headless.saveImage(filename, display_size.w, display_size.h, precalculated);
           calculated.clear();
         }
         zoom(-ZOOMSCALE);
@@ -261,12 +262,12 @@ public class Mandelbrot
   {
     glPointSize(5f);
     //float mod = Math.min((float)display.w/use.w,(float)display.w/use.w);
-    for (int y = 0; y < display.h; y++)
-      for (int x = 0; x < display.w; x++)
+    for (int y = 0; y < display_size.h; y++)
+      for (int x = 0; x < display_size.w; x++)
       {
-        if (use.w * y + x >= data.length)
+        if (current_size.w * y + x >= data.length)
           continue;
-        Color c = data[use.w * y + x];
+        Color c = data[current_size.w * y + x];
         if (c != null)
           Display.setColor3(c);
         else
@@ -283,7 +284,7 @@ public class Mandelbrot
     calculated.put(hv, clrset);
     Thread runner = new Thread(()->
     {
-      Q scaleFactor = srot(scale);
+      Q scaleFactor = srot(scale).reci().m(hv.size==render_size?render_display_ratio:1).reci();
       Q scaleFactorSmall = scaleFactor.m(q(1,ANTIALIASING));
       HashSet<int[]> tiles = new HashSet<>();
       for (int y = -hv.size.h/2; y < hv.size.h/2; y+=TILESIZE)

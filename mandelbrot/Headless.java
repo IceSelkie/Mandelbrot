@@ -1,13 +1,13 @@
-//package mandelbrot;
-//
+package mandelbrot;
+
 //import val.Q;
 //
-//import javax.imageio.ImageIO;
-//import java.awt.*;
-//import java.awt.image.*;
-//import java.io.File;
-//import java.io.FileWriter;
-//import java.io.IOException;
+import javax.imageio.ImageIO;
+import java.awt.*;
+import java.awt.image.*;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 //import java.math.BigInteger;
 //import java.util.*;
 //import java.util.List;
@@ -18,9 +18,9 @@
 //import static mandelbrot.Mandelbrot.MAXTHREADS;
 //import static val.Q.*;
 //import static val.primativedouble.Value.val;
-//
-//public class Headless
-//{
+
+public class Headless
+{
 //  //  Match a #/# or #. or #.# or .# or #
 //  public static final String regex_val_quo = "(?:(?:-?[0-9]+\\/[0-9]+)|(?:-?[0-9]+\\.(?:[0-9]+)?)|(?:-?\\.[0-9]+)|(?:-?[0-9]+))";
 //  //  Match a #. or #.# or .# or #
@@ -270,42 +270,42 @@
 //    return colors;
 //  }
 //
-//  public static void saveImageAsText(String filename, int width, int height, Color[] data)
-//  {
-//    System.out.println("Starting text file save at: "+filename);
-//    try {
-//      FileWriter fw = new FileWriter(filename);
-//      fw.write("{\"width\":"+width+",\"height\":"+height+",\"colors\":[");
-//      for (int i = 0; i<data.length; i++) {
-//        Color c = data[i];
-//        fw.write("["+c.getRed()+","+c.getGreen()+","+c.getBlue()+"]"+(i==data.length-1?"":","));
-//      }
-//      fw.write("]}");
-//      fw.close();
-//      System.out.println("Image data saved as text.");
-//    } catch (IOException e)
-//    {
-//      System.err.println("Unable to save image as text.");
-//    }
-//  }
-//  public static void saveImage(String filename, int width, int height, Color[] data)
-//  {
-//    System.out.println("Starting image file save at: "+filename);
-//    try {
-//      int[] rgbs = new int[data.length];
-//      for (int i = 0; i<rgbs.length; i++)
-//        rgbs[i] = data[i].getRGB();
-//      DataBuffer rgbData = new DataBufferInt(rgbs, rgbs.length);
-//
-//      WritableRaster raster = Raster.createPackedRaster(rgbData, width, height, width, new int[]{0xff0000, 0xff00, 0xff}, null);
-//      ColorModel colorModel = new DirectColorModel(24, 0xff0000, 0xff00, 0xff);
-//      BufferedImage img = new BufferedImage(colorModel, raster, false, null);
-//
-//      ImageIO.write(img, "png", new File(filename));
-//      System.out.println("Image file saved.");
-//    } catch (IOException e)
-//    {
-//      System.err.println("Unable to save image.");
-//    }
-//  }
-//}
+  public static void saveImageAsText(String filename, int width, int height, Color[] data)
+  {
+    System.out.println("Starting text file save at: "+filename);
+    try {
+      FileWriter fw = new FileWriter(filename);
+      fw.write("{\"width\":"+width+",\"height\":"+height+",\"colors\":[");
+      for (int i = 0; i<data.length; i++) {
+        Color c = data[i];
+        fw.write("["+c.getRed()+","+c.getGreen()+","+c.getBlue()+"]"+(i==data.length-1?"":","));
+      }
+      fw.write("]}");
+      fw.close();
+      System.out.println("Image data saved as text.");
+    } catch (IOException e)
+    {
+      System.err.println("Unable to save image as text.");
+    }
+  }
+  public static void saveImage(String filename, int width, int height, Color[] data)
+  {
+    System.out.println("Starting image file save at: "+filename);
+    try {
+      int[] rgbs = new int[data.length];
+      for (int i = 0; i<rgbs.length; i++)
+        rgbs[i] = data[i].getRGB();
+      DataBuffer rgbData = new DataBufferInt(rgbs, rgbs.length);
+
+      WritableRaster raster = Raster.createPackedRaster(rgbData, width, height, width, new int[]{0xff0000, 0xff00, 0xff}, null);
+      ColorModel colorModel = new DirectColorModel(24, 0xff0000, 0xff00, 0xff);
+      BufferedImage img = new BufferedImage(colorModel, raster, false, null);
+
+      ImageIO.write(img, "png", new File(filename));
+      System.out.println("Image file saved.");
+    } catch (IOException e)
+    {
+      System.err.println("Unable to save image.");
+    }
+  }
+}

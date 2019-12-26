@@ -2,7 +2,9 @@ package mandelbrot;
 
 import val.Q;
 import val.QP;
-import val.primativedouble.Value;
+// primativedouble
+// bigdouble
+import val.bigdouble.Value;
 
 import java.awt.*;
 import java.io.File;
@@ -16,15 +18,15 @@ import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.opengl.GL11.*;
 import static val.Q.*;
 import static val.QP.qp;
-import static val.primativedouble.Value.FOUR;
-import static val.primativedouble.Value.val;
+import static val.bigdouble.Value.FOUR;
+import static val.bigdouble.Value.val;
 
 public class Mandelbrot
 {
-  public static double COLORRATE = 4D/1D;
+  public static double COLORRATE = 1D/4D;
   public static final int TILESIZE = 150; // 150
-  public static final int DEPTH = 2048; // 2048  render 8x
-  public static final int ANTIALIASING = 4; // 1 render 16x
+  public static final int DEPTH = 2048*16; // 2048  render 8x
+  public static final int ANTIALIASING = 1; // 1 render 16x
   public static final int MAXTHREADS = 4*8+1;
   public static final double ZOOMSCALE = 1D/8; // render 8
 
@@ -71,9 +73,9 @@ public class Mandelbrot
 
   public static void main(String[] args)
   {
-    if (args.length!=0)
-      Headless.headless(args);
-    else
+//    if (args.length!=0)
+//      Headless.headless(args);
+//    else
       new Display().run();
   }
 
@@ -308,7 +310,7 @@ public class Mandelbrot
               for (int x = workTile[0]; x <= workTile[2]; x++)
               {
                 Q qx = hv.pt.x.a(scaleFactor.m(x));
-                long steps = -1;
+                //long steps = -1;
                 int rate = ANTIALIASING*ANTIALIASING;
                 Color clrave = Color.BLACK;
                 try {
@@ -323,7 +325,7 @@ public class Mandelbrot
                   int red = 0, green = 0, blue = 0;
                   for (int i = 0; i < ANTIALIASING*ANTIALIASING; i++)
                     if (d[i] != -1) {
-                      Color loc = Display.hsb4ToColor((int)(d[i]%360L), 90, rate*90, 255);
+                      Color loc = Display.hsb4ToColor((int)(d[i]*COLORRATE%360L), 90, rate*90, 255);
                       red += loc.getRed();
                       green += loc.getGreen();
                       blue += loc.getBlue();

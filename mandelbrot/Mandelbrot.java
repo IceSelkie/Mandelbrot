@@ -18,14 +18,13 @@ import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.opengl.GL11.*;
 import static val.Q.*;
 import static val.QP.qp;
-import static val.bigdouble.Value.FOUR;
 import static val.bigdouble.Value.val;
 
 public class Mandelbrot
 {
   public static double COLORRATE = 1D/4D;
   public static final int TILESIZE = 150; // 150
-  public static final int DEPTH = 2048*16; // 2048  render 8x
+  public static final int DEPTH = 2048*4; // 2048  render 8x
   public static final int ANTIALIASING = 1; // 1 render 16x
   public static final int MAXTHREADS = 4*8+1;
   public static final double ZOOMSCALE = 1D/8; // render 8
@@ -33,10 +32,18 @@ public class Mandelbrot
   private volatile Integer threadCount = 0; private synchronized int getThreads(){ return threadCount;} private synchronized void addThread(){ if (threadCount >=MAXTHREADS) System.err.println("Attempting to create a thread exceeding thread limit!"); threadCount++;} private synchronized void remThread(){ threadCount--;} private synchronized boolean canStartNewThread(){return threadCount<MAXTHREADS;}
   private volatile List<Thread> threads = Collections.synchronizedList(new ArrayList<Thread>(MAXTHREADS));
   HashMap<HashableView, Color[]> calculated = new HashMap<>(20);
+
   Display.WindowSize display_size;
-  final Display.WindowSize render_size = new Display.WindowSize(800*4,600*4);
   final int render_display_ratio = 4;
+  final Display.WindowSize render_size = new Display.WindowSize(800*render_display_ratio,600*render_display_ratio);
   Display.WindowSize current_size;
+
+  static boolean julia = false;
+  String juliasave_scale, juliasave_center_x, juliasave_center_y;
+  static Value juliacx;
+  static Value juliacy;
+
+  public static final Value FOUR = Value.FOUR;
 
   // Original
 //  double scale = -7.5;
@@ -101,6 +108,21 @@ public class Mandelbrot
   {
     if (action==GLFW_RELEASE)
     {
+      if (key == GLFW_KEY_H)
+      {
+        System.out.println("Mandelbrot Render Help:");
+        System.out.println("Press the following keys for the following actions.");
+        System.out.println("  '+' - Increase. Increase zoom/zoom in. Also the '=' key.");
+        System.out.println("  '-' - Decrease. Decrease zoom/zoom out.");
+        System.out.println("  's' - Save the currently rendered image. Note: Render must be complete or a crash may occur.");
+        System.out.println("  'w' - Write. Quick-write the current configuration to a file for a later quick load. Use 'r' to read/load.");
+        System.out.println("  'r' - Read. Quick-read the current configuration from a file to load a quick save from before. Use 'w' to write/save.");
+        System.out.println("  'l' - Loop. Start a loop zooming in from the current view. Can be used to cache rendered frames. If s was the last key pressed, it will save the render at the end of each frame.");
+        System.out.println("  'z' - Zoom. Resets the zoom to the default zoom of -7.5. If currently -7.5, will set the zoom level to -50 (very deep).");
+        System.out.println("  'v' - Viewframe. Switches the rendering viewframe between screen and huge. Huge is "+render_display_ratio+"x larger on each dimension than the original screen size.");
+        System.out.println("  'j' - Julia. Switches between rendering the mandelbrot and the julia set at a given point. Julia's view will be reset each time.");
+//        System.out.println("  'k' - Action.");
+      }
       // Plus -> Zoom In
       if (key == GLFW_KEY_EQUAL || key == GLFW_KEY_KP_ADD)
         zoom(-ZOOMSCALE);
@@ -111,7 +133,7 @@ public class Mandelbrot
       if (key== GLFW_KEY_S)
       {
         s = true;
-        String filename = ("render/"+"MandelbrotRender"+"t"+System.currentTimeMillis()/1000)+"_"+center.x+"+"+center.y+"i"+"_"+"Zoom"+scale+"_"+"CLR"+COLORRATE+"_"+"DPTH"+DEPTH+"_"+"AA"+ANTIALIASING+".png";
+        String filename = ("render/"+(julia ?"Julia":"Mandelbrot")+"Render"+"t"+System.currentTimeMillis()/1000)+"_"+center.x+"+"+center.y+"i"+"_"+"Zoom"+scale+"_"+"CLR"+COLORRATE+"_"+"DPTH"+DEPTH+"_"+current_size.w+"x"+current_size.h+"_"+"AA"+ANTIALIASING+".png";
         Headless.saveImage(filename, current_size.w, current_size.h,precalculated);
       }
 
@@ -122,9 +144,23 @@ public class Mandelbrot
         System.out.println("Starting text file location save at: "+latestFile);
         try {
           FileWriter fw = new FileWriter(latestFile);
-          fw.write(scale+"\n");
-          fw.write(center.x+"\n");
-          fw.write(center.y.toString());
+          if (!julia)
+          {
+            fw.write(scale+"\n");
+            fw.write(center.x+"\n");
+            fw.write(center.y+"\n");
+            fw.write(julia+"");
+          }
+          else
+          {
+            fw.write(juliasave_scale+"\n");
+            fw.write(juliasave_center_x+"\n");
+            fw.write(juliasave_center_y+"\n");
+            fw.write(julia+"\n");
+            fw.write(scale+"\n");
+            fw.write(center.x+"\n");
+            fw.write(center.y.toString());
+          }
           fw.close();
           System.out.println("Location data saved as text.");
         } catch (IOException e)
@@ -141,6 +177,17 @@ public class Mandelbrot
           Scanner scanner = new Scanner(new File(latestFile));
           scale=new Double(scanner.nextLine());
           center = qp(q(scanner.nextLine()),q(scanner.nextLine()));
+          if (scanner.hasNext())
+          {
+            julia = Boolean.parseBoolean(scanner.nextLine());
+            if (julia) {
+              juliasave_scale = ((Object)scale).toString();
+              juliacx = val(juliasave_center_x=center.x.toString());
+              juliacy = val(juliasave_center_y=center.y.toString());
+              scale=new Double(scanner.nextLine());
+              center = qp(q(scanner.nextLine()),q(scanner.nextLine()));
+            }
+          }
           clearThreads();
           calculated.clear();
           System.out.printf("%sNow centered on (%s + %s * i) (%s/%s + i * %s/%s)%s", "\n", center.x, center.y, center.x.n, center.x.d, center.y.n, center.y.d,"\n");
@@ -172,6 +219,31 @@ public class Mandelbrot
           current_size = render_size;
         else
           current_size = display_size;
+        clearThreads();
+        calculated.clear();
+      }
+      if (key==GLFW_KEY_J)
+      {
+        if (julia = !julia)
+        {
+          juliacx = val(center.x.toString());
+          juliacy = val(center.y.toString());
+          juliasave_scale = ((Object)scale).toString();
+          juliasave_center_x = ((Object)center.x).toString();
+          juliasave_center_y = ((Object)center.y).toString();
+          //center = qp(q(0),q(0));
+          //scale = -7.5;
+        }
+        else
+        {
+          scale=new Double(juliasave_scale);
+          center = qp(q(juliasave_center_x),q(juliasave_center_y));
+          juliasave_scale = juliasave_center_x = juliasave_center_y = null;
+        }
+        clearThreads();
+        calculated.clear();
+        System.out.printf("%sNow rendering Julia set. c= (%s + %s * i) (%s/%s + i * %s/%s)%s", "\n", center.x, center.y, center.x.n, center.x.d, center.y.n, center.y.d,"\n");
+        System.out.printf("%sStill centered on (%s + %s * i) (%s/%s + i * %s/%s)%s", "\n", center.x, center.y, center.x.n, center.x.d, center.y.n, center.y.d,"\n");
       }
 
       if (key!=GLFW_KEY_S && key!=GLFW_KEY_L)
@@ -389,12 +461,13 @@ public class Mandelbrot
   }
   public static long countStepsValue(Value cx, Value cy, long maxSteps)
   {
-    Value zx = Value.ZERO, zy = Value.ZERO;
+    Value zx = cx, zy = cy;
     Value temp;
 
     Value zxS = zx.mul(zx), zyS = zy.mul(zy);
 
-    long steps = 0;
+    long steps = 1;
+    if (!julia)
     while (steps < maxSteps && zxS .add (zyS) .lessThan (FOUR))
     {
       temp = zxS .sub (zyS) .add (cx);
@@ -404,6 +477,16 @@ public class Mandelbrot
       zxS = zx.mul(zx);
       zyS = zy.mul(zy);
     }
+    else
+      while (steps < maxSteps && zxS .add (zyS) .lessThan (FOUR))
+      {
+        temp = zxS .sub (zyS) .add (juliacx);
+        zy = (zx .add (zy)).sq() .sub (zxS) .sub (zyS) .add (juliacy);
+        zx = temp;
+        steps++;
+        zxS = zx.mul(zx);
+        zyS = zy.mul(zy);
+      }
     if (zxS .add (zyS) .lessThan (FOUR))
       steps++;
     return steps == maxSteps + 1 ? -1 : steps;

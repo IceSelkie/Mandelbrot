@@ -1,0 +1,44 @@
+plugins {
+    id 'java'
+    id 'application'
+    id 'com.github.johnrengelman.shadow' version '2.0.4' // 2.0.1 is the old one.
+}
+
+group 'hyec'
+version '1.0'
+
+sourceCompatibility = 8
+
+repositories {
+    mavenCentral()
+}
+
+mainClassName = 'mandelbrot.Mandelbrot'
+
+jar {
+    manifest {
+        attributes 'Main-Class': 'mandelbrot.Mandelbrot'
+    }
+}
+
+def osName = System.getProperty("os.name").toLowerCase()
+def nativesSuffix
+
+if (osName.contains("win")) {
+    nativesSuffix = 'windows'
+} else if (osName.contains("mac")) {
+    nativesSuffix = 'macos'
+} else if (osName.contains("nix") || osName.contains("nux") || osName.contains("aix")) {
+    nativesSuffix = 'linux'
+} else {
+    throw new GradleException("Unsupported OS: $osName")
+}
+
+dependencies {
+    compile files('./libraries/lwjgl-3.1.6/lwjgl/lwjgl.jar')
+    compile files("./libraries/lwjgl-3.1.6/lwjgl/lwjgl-natives-${nativesSuffix}.jar")
+    compile files('./libraries/lwjgl-3.1.6/lwjgl-glfw/lwjgl-glfw.jar')
+    compile files("./libraries/lwjgl-3.1.6/lwjgl-glfw/lwjgl-glfw-natives-${nativesSuffix}.jar")
+    compile files('./libraries/lwjgl-3.1.6/lwjgl-opengl/lwjgl-opengl.jar')
+    compile files("./libraries/lwjgl-3.1.6/lwjgl-opengl/lwjgl-opengl-natives-${nativesSuffix}.jar")
+}

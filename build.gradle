@@ -15,6 +15,10 @@ repositories {
 
 mainClassName = 'mandelbrot.Mandelbrot'
 
+run {
+    jvmArgs '-XstartOnFirstThread'
+}
+
 jar {
     manifest {
         attributes 'Main-Class': 'mandelbrot.Mandelbrot'

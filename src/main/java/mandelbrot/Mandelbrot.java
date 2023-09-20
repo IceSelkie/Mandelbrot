@@ -22,12 +22,12 @@ import static val.bigdouble.Value.val;
 
 public class Mandelbrot
 {
-  public static double COLORRATE = 1D/4D;
+  public static double COLORRATE = 1D/0.25D;
   public static final int TILESIZE = 150; // 150
-  public static final int DEPTH = 2048*4; // 2048  render 8x
+  public static final int DEPTH = 2048/4; // 2048  render 8x
   public static final int ANTIALIASING = 1; // 1 render 16x
-  public static final int MAXTHREADS = 4*8+1;
-  public static final double ZOOMSCALE = 1D/8; // render 8
+  public static final int MAXTHREADS = 16+1;// 16 rendering threads, 1 managing thread
+  public static final double ZOOMSCALE = 1D/2; // render 8
 
   private volatile Integer threadCount = 0; private synchronized int getThreads(){ return threadCount;} private synchronized void addThread(){ if (threadCount >=MAXTHREADS) System.err.println("Attempting to create a thread exceeding thread limit!"); threadCount++;} private synchronized void remThread(){ threadCount--;} private synchronized boolean canStartNewThread(){return threadCount<MAXTHREADS;}
   private volatile List<Thread> threads = Collections.synchronizedList(new ArrayList<Thread>(MAXTHREADS));
@@ -46,37 +46,8 @@ public class Mandelbrot
   public static final Value FOUR = Value.FOUR;
 
   // Original
-//  double scale = -7.5;
-//  QP center = qp(q(-1, 2), q(0, 1));
-
-  // ??
-  //double scale = -20.5;
-  //QP center = qp(q(81448, 49550959), q(-24170803,29388151));
-
-  // 00 Cool spikes
-  //double scale = -19.5;
-  //QP center = qp(new Q(new BigInteger("-2301783278655076632811585394649140808770420500066574794752"),new BigInteger("15459423034510202420813247184330822928167207450548633600000")),new Q(new BigInteger("-7929977679099751430849043327089856342822712822632586149888"),new BigInteger("7729711517255101210406623592165411464083603725274316800000")));
-
-  // 01 Arcing Zoom
-  //double scale = -29.0;
-  //QP center = qp(new Q(new BigInteger("-85241514145487948761243"), new BigInteger("572479338973652582400000")), new Q(new BigInteger("-7047730329760827785407283"), new BigInteger("6869752067683830988800000")));
-
-  // 02
-  double scale = -46.0;
-//  double scale = -41;
-  QP center = qp(new Q(new BigInteger("-824405337713456342058634333124188673418821894144"), new BigInteger("5536680432649312569992785998100296189031219200000")), new Q(new BigInteger("-68161465287625812021748692727096276126856290238464"), new BigInteger("66440165191791750839913431977203554268374630400000")));
-
-  //Now centered on (-0.1488988479182952 + -1.0259075228224855 * i) (-156351065007566805536679717902520180585184297051059600526282234912293357272305181740113695589501876635357821471771652298663040820339068108800000/1050048856612784811624118896102900188226486902730961598736571103158496705677236567292605696792464875546003256803410319985501278977392640000000000 + i * -12927036255962464080151345488248209469761598172246797660221691866872273692602486962073929305996030740650276902171941681540968122573928372633600000/12600586279353417739489426753234802258717842832771539184838853237901960468126838807511268361509578506552039081640923839826015347728711680000000000)
-  //double scale = -55.0;
-  //QP center = qp(new Q(new BigInteger("-156351065007566805536679717902520180585184297051059600526282234912293357272305181740113695589501876635357821471771652298663040820339068108800000"), new BigInteger("1050048856612784811624118896102900188226486902730961598736571103158496705677236567292605696792464875546003256803410319985501278977392640000000000")), new Q(new BigInteger("-12927036255962464080151345488248209469761598172246797660221691866872273692602486962073929305996030740650276902171941681540968122573928372633600000"), new BigInteger("12600586279353417739489426753234802258717842832771539184838853237901960468126838807511268361509578506552039081640923839826015347728711680000000000")));
-
-  // ## name
-  //double scale = -13.5;
-  //QP center = qp(new Q(new BigInteger(""), new BigInteger("")), new Q(new BigInteger(""), new BigInteger("")));
-
-//  double scale = -49.5;
-//  QP center = qp(new Q(new BigInteger("-19854057535354568"),BigInteger.TEN.pow(16)),new Q(new BigInteger("-00000260443807927"),BigInteger.TEN.pow(16)));
-
+  double scale = -7.5;
+  QP center = qp(q(-1, 2), q(0, 1));
 
   public static void main(String[] args)
   {
@@ -106,40 +77,25 @@ public class Mandelbrot
   private static int loopindex = 0;
   public void keyPress(int key, int action)
   {
+    String latestFile = "last.mandel";
     if (action==GLFW_RELEASE)
     {
-      if (key == GLFW_KEY_H)
-      {
-        System.out.println("Mandelbrot Render Help:");
-        System.out.println("Press the following keys for the following actions.");
-        System.out.println("  '+' - Increase. Increase zoom/zoom in. Also the '=' key.");
-        System.out.println("  '-' - Decrease. Decrease zoom/zoom out.");
-        System.out.println("  's' - Save the currently rendered image. Note: Render must be complete or a crash may occur.");
-        System.out.println("  'w' - Write. Quick-write the current configuration to a file for a later quick load. Use 'r' to read/load.");
-        System.out.println("  'r' - Read. Quick-read the current configuration from a file to load a quick save from before. Use 'w' to write/save.");
-        System.out.println("  'l' - Loop. Start a loop zooming in from the current view. Can be used to cache rendered frames. If s was the last key pressed, it will save the render at the end of each frame.");
-        System.out.println("  'z' - Zoom. Resets the zoom to the default zoom of -7.5. If currently -7.5, will set the zoom level to -50 (very deep).");
-        System.out.println("  'v' - Viewframe. Switches the rendering viewframe between screen and huge. Huge is "+render_display_ratio+"x larger on each dimension than the original screen size.");
-        System.out.println("  'j' - Julia. Switches between rendering the mandelbrot and the julia set at a given point. Julia's view will be reset each time.");
-//        System.out.println("  'k' - Action.");
-      }
       // Plus -> Zoom In
       if (key == GLFW_KEY_EQUAL || key == GLFW_KEY_KP_ADD)
         zoom(-ZOOMSCALE);
       // Minus -> Zoom Out
-      if (key == GLFW_KEY_MINUS|| key == GLFW_KEY_KP_SUBTRACT)
+      else if (key == GLFW_KEY_MINUS|| key == GLFW_KEY_KP_SUBTRACT)
         zoom(ZOOMSCALE);
       // S -> Save Image
-      if (key== GLFW_KEY_S)
+      else if (key== GLFW_KEY_S)
       {
         s = true;
         String filename = ("render/"+(julia ?"Julia":"Mandelbrot")+"Render"+"t"+System.currentTimeMillis()/1000)+"_"+center.x+"+"+center.y+"i"+"_"+"Zoom"+scale+"_"+"CLR"+COLORRATE+"_"+"DPTH"+DEPTH+"_"+current_size.w+"x"+current_size.h+"_"+"AA"+ANTIALIASING+".png";
         Headless.saveImage(filename, current_size.w, current_size.h,precalculated);
       }
 
-      String latestFile = "last.mandel";
       // W -> Write View Parameters To File
-      if (key==GLFW_KEY_W)
+      else if (key==GLFW_KEY_W)
       {
         System.out.println("Starting text file location save at: "+latestFile);
         try {
@@ -169,7 +125,7 @@ public class Mandelbrot
         }
       }
       // R -> Read View Parameters From File
-      if (key==GLFW_KEY_R)
+      else if (key==GLFW_KEY_R)
       {
         loop = false;
         s = false;
@@ -199,13 +155,13 @@ public class Mandelbrot
       }
       // L -> Start Render Loop
       // See S. If last action was save, loop will save at each iteration.
-      if (key==GLFW_KEY_L)
+      else if (key==GLFW_KEY_L)
       {
         loop = !loop;
         loopindex = 0;
       }
       // Z -> Zoom Reset (Zooms out, or if all the way zoomed out, zoom all the way in.)
-      if (key==GLFW_KEY_Z)
+      else if (key==GLFW_KEY_Z)
       {
         if (scale!=-7.5)
           scale = -7.5;
@@ -213,7 +169,7 @@ public class Mandelbrot
           scale = -50;
         zoom(0);
       }
-      if (key==GLFW_KEY_V)
+      else if (key==GLFW_KEY_V)
       {
         if (current_size == display_size)
           current_size = render_size;
@@ -222,7 +178,7 @@ public class Mandelbrot
         clearThreads();
         calculated.clear();
       }
-      if (key==GLFW_KEY_J)
+      else if (key==GLFW_KEY_J)
       {
         if (julia = !julia)
         {
@@ -246,9 +202,25 @@ public class Mandelbrot
         System.out.printf("%sStill centered on (%s + %s * i) (%s/%s + i * %s/%s)%s", "\n", center.x, center.y, center.x.n, center.x.d, center.y.n, center.y.d,"\n");
       }
 
-      if (key!=GLFW_KEY_S && key!=GLFW_KEY_L)
+      else if (key!=GLFW_KEY_S && key!=GLFW_KEY_L)
       {
         s = false;
+      }
+
+      else // if (key == GLFW_KEY_H)
+      {
+        System.out.println("Mandelbrot Render Help:");
+        System.out.println("Press the following keys for the following actions.");
+        System.out.println("  '+' - Increase. Increase zoom/zoom in. Also the '=' key.");
+        System.out.println("  '-' - Decrease. Decrease zoom/zoom out.");
+        System.out.println("  's' - Save the currently rendered image. Note: Render must be complete or a crash may occur.");
+        System.out.println("  'w' - Write. Quick-write the current configuration to a file for a later quick load. Use 'r' to read/load.");
+        System.out.println("  'r' - Read. Quick-read the current configuration from a file to load a quick save from before. Use 'w' to write/save.");
+        System.out.println("  'l' - Loop. Start a loop zooming in from the current view. Can be used to cache rendered frames. If s was the last key pressed, it will save the render at the end of each frame.");
+        System.out.println("  'z' - Zoom. Resets the zoom to the default zoom of -7.5. If currently -7.5, will set the zoom level to -50 (very deep).");
+        System.out.println("  'v' - Viewframe. Switches the rendering viewframe between screen and huge. Huge is "+render_display_ratio+"x larger on each dimension than the original screen size.");
+        System.out.println("  'j' - Julia. Switches between rendering the mandelbrot and the julia set at a given point. Julia's view will be reset each time.");
+//        System.out.println("  'k' - Action.");
       }
     }
   }
